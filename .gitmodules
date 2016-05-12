@@ -1,0 +1,3 @@
+[submodule "src/swarm"]
+	path = src/swarm
+	url = git://github.com/torognes/swarm.git
