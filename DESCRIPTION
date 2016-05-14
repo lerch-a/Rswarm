@@ -2,7 +2,7 @@ Package: Rswarm
 Type: Package
 Title: R swarm wrapper
 Version: 0.99.1
-Date: 2013-04-11
+Date: 2016-04-11
 Author: Anita Lerch
 Maintainer: Anita Lerch <anita.lerch@unibas.ch>
 Suggests: parallel

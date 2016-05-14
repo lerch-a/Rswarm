@@ -1,29 +1,17 @@
-## The main wrapper around bowtie
-
-## The main wrapper around bowtie-build
-bowtie_build <- function(references, outdir, ..., prefix="index", force=FALSE, strict=TRUE)
-{
-    if(strict && (!is.character(references) || !all(file.exists(references))))
-        stop("Argument 'references' has to be a character vector of filenames ",
-             "for building the sequence index.")
-    if(strict && (!is.character(outdir) || length(outdir)!=1))
-        stop("Argument 'outdir' must be a character scalar giving the output ",
-             "directory to store the bowtie indices in.")
-    if(strict && (file.exists(outdir) && !force))
-        stop("Directory '", outdir, "' exists. Use 'force=TRUE' to overwrite.")
-    if(is.null(list(...)[["usage"]]) || !list(...)[["usage"]])
-        dir.create(outdir, recursive=TRUE, showWarnings=FALSE)
-    indexPrefix <- shQuote(file.path(outdir, prefix))
-    args <- sprintf("%s %s %s", .createFlags(list(...)), paste(shQuote(references), collapse=","), indexPrefix)
-    return(invisible(.bowtieBin("bowtie-build", args)))
-}
-
-
-## The main wrapper around bowtie
-bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow"), outfile,
+## The main wrapper around swarm
+# frqfile <- list.files("_bind_primerseq_demultiplex_run2/cpmp", pattern="hapFreq", full.names=T)
+# prefix <- sub("_hapFreq\\.fa", "", basename(frqfile))
+# outdir <- file.path(dirname(frqfile), "fb3")
+# outfile <- file.path(outdir, paste(prefix, ".swarms", sep=""))
+# structfile <- file.path(outdir, paste(prefix, ".struct", sep=""))
+# logfile <- file.path(outdir, paste(prefix, ".log.txt", sep=""))
+# statsfile <- file.path(outdir, paste(prefix, ".stats.txt", sep=""))
+# repfile <- file.path(outdir, paste(prefix, ".representatives.fasta", sep=""))
+# syscall <- paste("-f -b 3 -w", repfile, "-l", logfile, "-s", statsfile, "-i", structfile, "-o", outfile, frqfile, sep=" ")
+# swarm(syscall)
+swarm <- function(sequences, ..., outfile,
                    force=FALSE, strict=TRUE)
 {
-    type <- match.arg(type)
     args <- list(...)
     args <- args[setdiff(names(args), c("1", "2", "12"))]
     seqIn <- !is.null(args[["c"]]) && args[["c"]]
@@ -34,7 +22,7 @@ bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow")
                          single={
                              if(!is.character(sequences) || (!seqIn && !all(file.exists(sequences))))
                                  stop("Argument 'sequences' has to be a character vector of filenames ",
-                                      "to align against the bowtie index or a character of read ",
+                                      "to align against the swarm index or a character of read ",
                                       "sequences if the additional argument c==TRUE.")
                              paste(shQuote(sequences), collapse=",")
                          },
@@ -46,7 +34,7 @@ bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow")
                          {
                              if(!is.character(sequences[[i]]) || (!seqIn && !all(file.exists(sequences[[i]]))))
                                  stop("Argument 'sequences[[", i, "]]' has to be a character vector of filenames ",
-                                      "to align against the bowtie index or a character of read ",
+                                      "to align against the swarm index or a character of read ",
                                       "sequences if the additional argument c==TRUE.")
                              tmp <- paste(tmp,  "-", i, " ", paste(shQuote(sequences[[i]]), collapse=","), " ", sep="")
                          }
@@ -55,7 +43,7 @@ bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow")
                      crossbow={
                          if(!is.character(sequences) || (!seqIn && !all(file.exists(sequences))))
                                  stop("Argument 'sequences' has to be a character vector of filenames ",
-                                      "to align against the bowtie index or a character of read ",
+                                      "to align against the swarm index or a character of read ",
                                       "sequences if the additional argument c==TRUE.")
                          paste("-12 ", paste(shQuote(sequences), collapse=","))
            })
@@ -67,7 +55,7 @@ bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow")
     {
         if(strict && (!is.character(outfile) || length(outfile)!=1))
             stop("Argument 'outfile' must be a character scalar giving the output ",
-                 "file name to store the bowtie alignments in.")
+                 "file name to store the swarm alignments in.")
         if(strict && (file.exists(outfile) && !force))
             stop("File '", outfile, "' exists. Use 'force=TRUE' to overwrite.")
         sprintf(" %s", shQuote(outfile))
@@ -75,18 +63,15 @@ bowtie <- function(sequences, index, ..., type=c("single", "paired", "crossbow")
    
     
     args <- sprintf("%s %s %s %s", .createFlags(args), shQuote(index), seqArg, outfile)
-    return(invisible(.bowtieBin("bowtie", args)))
+    return(invisible(.swarmBin("swarm", args)))
 }
 
-## Little helpers that return a description of the intended usage for bowtie and bowtie-build
-bowtie_build_usage <- function()
-    print(bowtie_build("dummy", "dummy", force=TRUE, usage=TRUE, strict=FALSE))
+## Little helpers that return a description of the intended usage for swarm and swarm-build
+swarm_usage <- function()
+    print(swarm("dummy", "dummy", force=TRUE, usage=TRUE, strict=FALSE))
 
-bowtie_usage <- function()
-    print(bowtie("dummy", "dummy", force=TRUE, usage=TRUE, strict=FALSE))
-
-bowtie_version <- function(){
-    print(.bowtieBin(bin="bowtie", args="--version"))
+swarm_version <- function(){
+    print(.swarmBin(bin="swarm", args="--version"))
 }
 
 
@@ -117,14 +102,13 @@ bowtie_version <- function(){
 }
 
 
-## A helper function to call one of the two bowtie binaries with additional arguments.
-.bowtieBin <- function(bin=c("bowtie", "bowtie-build"), args="")
+## A helper function to call one of the two swarm binaries with additional arguments.
+.swarmBin <- function(args="")
 {
     if(is.null(args) || args=="")
-        stop("The bowtie binaries need to be called with additional arguments")
+        stop("The swarm binaries need to be called with additional arguments")
     args <- gsub("^ *| *$", "", args)
-    bin <- match.arg(bin)
-    call <- paste(shQuote(file.path(system.file(package="Rbowtie"), bin)), args)
+    call <- paste(shQuote(file.path(system.file(package="Rswarm"), "swarm")), args)
     #return(call)
     output <- system(call, intern=TRUE)
     return(output)
