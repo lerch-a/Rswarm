@@ -1,117 +1,143 @@
-## The main wrapper around swarm
-# frqfile <- list.files("_bind_primerseq_demultiplex_run2/cpmp", pattern="hapFreq", full.names=T)
-# prefix <- sub("_hapFreq\\.fa", "", basename(frqfile))
-# outdir <- file.path(dirname(frqfile), "fb3")
-# outfile <- file.path(outdir, paste(prefix, ".swarms", sep=""))
-# structfile <- file.path(outdir, paste(prefix, ".struct", sep=""))
-# logfile <- file.path(outdir, paste(prefix, ".log.txt", sep=""))
-# statsfile <- file.path(outdir, paste(prefix, ".stats.txt", sep=""))
-# repfile <- file.path(outdir, paste(prefix, ".representatives.fasta", sep=""))
+
+## Example
 # syscall <- paste("-f -b 3 -w", repfile, "-l", logfile, "-s", statsfile, "-i", structfile, "-o", outfile, frqfile, sep=" ")
 # swarm(syscall)
-swarm <- function(sequences, ..., outfile,
-                   force=FALSE, strict=TRUE)
+
+## The main wrapper around swarm
+swarm <- function(fastaFile, outfilePrefix=sub("\\.fasta", "", fastaFile), 
+                  boundary=3, differences=1, fastidious=T, noOTUbreaking=F,
+                  force=F, internalStructure=T, log=T, outputFile=T, statisticsFile=T, seeds=T, 
+                  mothurFormat=F, usearchAbundanceStyle=F, appendAbundance=NULL,
+                  matchReward=5, mismatchPenalty=4, gapOpeningPenalty=12, gapExtensionPenalty=4
+                  threads=1, ceiling=NULL, bloomBits=16)
 {
-    args <- list(...)
-    args <- args[setdiff(names(args), c("1", "2", "12"))]
-    seqIn <- !is.null(args[["c"]]) && args[["c"]]
-    seqArg <- ""
-    if(strict)
-    {
-        seqArg <- switch(type,
-                         single={
-                             if(!is.character(sequences) || (!seqIn && !all(file.exists(sequences))))
-                                 stop("Argument 'sequences' has to be a character vector of filenames ",
-                                      "to align against the swarm index or a character of read ",
-                                      "sequences if the additional argument c==TRUE.")
-                             paste(shQuote(sequences), collapse=",")
-                         },
-                         paired={
-                         if(!is.list(sequences) || length(sequences)!=2)
-                             stop("Argument 'sequences' must be a list of length 2.")
-                         tmp <- NULL
-                         for(i in 1:2)
-                         {
-                             if(!is.character(sequences[[i]]) || (!seqIn && !all(file.exists(sequences[[i]]))))
-                                 stop("Argument 'sequences[[", i, "]]' has to be a character vector of filenames ",
-                                      "to align against the swarm index or a character of read ",
-                                      "sequences if the additional argument c==TRUE.")
-                             tmp <- paste(tmp,  "-", i, " ", paste(shQuote(sequences[[i]]), collapse=","), " ", sep="")
-                         }
-                         tmp
-                     },
-                     crossbow={
-                         if(!is.character(sequences) || (!seqIn && !all(file.exists(sequences))))
-                                 stop("Argument 'sequences' has to be a character vector of filenames ",
-                                      "to align against the swarm index or a character of read ",
-                                      "sequences if the additional argument c==TRUE.")
-                         paste("-12 ", paste(shQuote(sequences), collapse=","))
-           })
+  args <- ""
+  
+  ##    General options:
+  #     -t, --threads INTEGER 1-256               number of threads to use (1)
+  if(threads %in% 1:256)
+    args <- paste(args, sprintf("-t %d", threads))
+  
+  
+  ##   Clustering options:
+  #     -b, --boundary INTEGER              min mass of large OTU for fastidious (3)
+  if(is.integer(boundary))
+    args <- paste(args, sprintf("-b %d", boundary))
+  
+  #     -c, --ceiling INTEGER               max memory in MB used for fastidious
+  if(!is.null(ceiling) & is.integer(ceiling))
+    args <- paste(args, sprintf("-c %d", ceiling))
+  
+  #     -d, --differences INTEGER 0-256           resolution (1)
+  if(differences %in% 0:256)
+    args <- paste(args, sprintf("-d %d", differences))
+  
+  #     -f, --fastidious                    link nearby low-abundance swarms
+  if(fastidious)
+    args <- paste(args, "-f")
+  
+  #     -n, --no-otu-breaking               never break OTUs
+  if(noOTUbreaking)
+    args <- paste(args, "-n")
+  
+  #     -y, --bloom-bits INTEGER 2-64            bits used per Bloom filter entry (16)
+  if(bloomBits %in% 2:64)
+    args <- paste(args, sprintf("-y %d", bloomBits))
+  
+  
+  ##    Input/output options:
+  #     -a, --append-abundance INTEGER      value to use when abundance is missing
+  if(!is.null(appendAbundance) & is.integer(appendAbundance))
+    args <- paste(args, sprintf("-a %d", appendAbundance))
     
-        if(!is.character(index) || !file.exists(dirname(index)))
-            stop("Argument 'index' has to be a character scalar giving the path to the index directory.")
-    }
-    outfile <- if(!missing(outfile))
-    {
-        if(strict && (!is.character(outfile) || length(outfile)!=1))
-            stop("Argument 'outfile' must be a character scalar giving the output ",
-                 "file name to store the swarm alignments in.")
-        if(strict && (file.exists(outfile) && !force))
-            stop("File '", outfile, "' exists. Use 'force=TRUE' to overwrite.")
-        sprintf(" %s", shQuote(outfile))
-    } else ""
-   
+  #     -i, --internal-structure FILENAME   write internal swarm structure to file
+  if(internalStructure){
+    structfile <- paste(outfilePrefix, ".struct.txt", sep="")
+    args <- paste(args, sprintf("-i %s", structfile))
+  }
+  
+  #     -l, --log FILENAME                  log to file, not to stderr
+  if(log){
+    logfile <- paste(outfilePrefix, ".log.txt", sep="")
+    args <- paste(args, sprintf("-l %s", logfile))
+  }
     
-    args <- sprintf("%s %s %s %s", .createFlags(args), shQuote(index), seqArg, outfile)
-    return(invisible(.swarmBin("swarm", args)))
+  #     -o, --output-file FILENAME          output result filename (stdout)
+  if(outputFile){
+    outfile <- paste(outfilePrefix, ".swarms.txt", sep="")
+    args <- paste(args, sprintf("-o %s", outfile))
+  }
+  
+  #     -r, --mothur                        output in mothur list file format
+  if(mothurFormat)
+    args <- paste(args, "-r")
+  
+  #     -s, --statistics-file FILENAME      dump OTU statistics to file
+  if(statisticsFile){
+    statsfile <- paste(outfilePrefix, ".stats.txt", sep="")
+    args <- paste(args, sprintf("-s %s", statsfile))
+  }
+  
+  #     -u, --uclust-file FILENAME          output in UCLUST-like format to file
+  # TODO
+  
+  #     -w, --seeds FILENAME                write seed seqs with abundances to FASTA
+  if(seeds){
+    repfile <- paste(outfilePrefix, ".representatives.fasta", sep="")
+    args <- paste(args, sprintf("-w %s", repfile))
+  }
+  
+  #     -z, --usearch-abundance             abundance annotation in usearch style
+  if(usearchAbundanceStyle)
+    args <- paste(args, "-z")
+  
+  
+  ##    Pairwise alignment advanced options:
+  #     -m, --match-reward INTEGER          reward for nucleotide match (5)
+  if(is.integer(matchReward))
+    args <- paste(args, sprintf("-m %d", matchReward)
+  
+  #     -p, --mismatch-penalty INTEGER      penalty for nucleotide mismatch (4)
+  if(is.integer(mismatchPenalty))
+    args <- paste(args, sprintf("-p %d", mismatchPenalty)
+                  
+  #     -g, --gap-opening-penalty INTEGER   gap open penalty (12)
+  if(is.integer(gapOpeningPenalty))
+    args <- paste(args, sprintf("-g %d", gapOpeningPenalty)
+                  
+  #     -e, --gap-extension-penalty INTEGER gap extension penalty (4)  
+  if(is.integer(gapExtensionPenalty))
+    args <- paste(args, sprintf("-e %d", gapExtensionPenalty)
+
+  
+  if(!is.character(fastaFile) || file.exists(fastaFile){
+    stop("Argument 'fastaFile' has to be a character vector of filenames.")
+  }
+  args <- paste(args, fastaFile)
+
+  return(invisible(.swarmBin(args)))
 }
 
-## Little helpers that return a description of the intended usage for swarm and swarm-build
+
+## Helper function that return a description of the intended usage for swarm
 swarm_usage <- function()
-    print(swarm("dummy", "dummy", force=TRUE, usage=TRUE, strict=FALSE))
+  print(.swarmBin(args="--help"))
 
+
+## Helper function that return the version of swarm
 swarm_version <- function(){
-    print(.swarmBin(bin="swarm", args="--version"))
+  print(.swarmBin(args="--version"))
 }
 
 
-
-## A helper function to create a scalar of command line arguments from a named list.
-## Logical list entries are being interpreted as flags, all other entries are being
-## collapsed into the form '<entryName>=<entryValue>'. Vectors of non-logical entry
-## values will be collapsed into a single comma-separated scalar.
-.createFlags <- function(flagList)
-{
-    if(!length(flagList))
-        return("")
-    if(is.null(names(flagList)) || any(names(flagList)==""))
-        stop("Unable to create command line arguments from input.")
-    logFlags <- sapply(flagList, is.logical)
-    flags <- NULL
-    if(any(logFlags))
-    {
-        fnames <- names(flagList)[logFlags][sapply(flagList[logFlags], function(x) x[1])]
-        flags <- paste(sapply(fnames, function(x) ifelse(nchar(x)==1, sprintf("-%s", x), sprintf("--%s", x))),
-                       collapse=" ")
-    }
-    fnames <- sapply(names(flagList)[!logFlags], function(x) ifelse(nchar(x)==1, sprintf("-%s", x),
-                                                                    sprintf("--%s", x)))
-    flags <- paste(flags, paste(fnames, sapply(flagList[!logFlags], paste, collapse=","),
-                                collapse=" ", sep=" "), collapse=" ")
-    return(gsub("^ *| *$", "", flags))
-}
-
-
-## A helper function to call one of the two swarm binaries with additional arguments.
+## A helper function to call the swarm binaries with additional arguments.
 .swarmBin <- function(args="")
 {
-    if(is.null(args) || args=="")
-        stop("The swarm binaries need to be called with additional arguments")
-    args <- gsub("^ *| *$", "", args)
-    call <- paste(shQuote(file.path(system.file(package="Rswarm"), "swarm")), args)
-    #return(call)
-    output <- system(call, intern=TRUE)
-    return(output)
+  if(is.null(args) || args=="")
+    stop("The swarm binaries need to be called with additional arguments")
+  args <- gsub("^ *| *$", "", args)
+  call <- paste(shQuote(file.path(system.file(package="Rswarm"), "swarm")), args)
+  return(system(call, intern=TRUE))
 }
 
 ## The direct binary call function
