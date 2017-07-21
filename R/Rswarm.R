@@ -95,19 +95,19 @@ swarm <- function(fastaFile, outfilePrefix=sub("\\.fasta", "", fastaFile),
   ##    Pairwise alignment advanced options:
   #     -m, --match-reward INTEGER          reward for nucleotide match (5)
   if(is.integer(matchReward))
-    args <- paste(args, sprintf("-m %d", matchReward)
+    args <- paste(args, sprintf("-m %d", matchReward))
   
   #     -p, --mismatch-penalty INTEGER      penalty for nucleotide mismatch (4)
   if(is.integer(mismatchPenalty))
-    args <- paste(args, sprintf("-p %d", mismatchPenalty)
+    args <- paste(args, sprintf("-p %d", mismatchPenalty))
                   
   #     -g, --gap-opening-penalty INTEGER   gap open penalty (12)
   if(is.integer(gapOpeningPenalty))
-    args <- paste(args, sprintf("-g %d", gapOpeningPenalty)
+    args <- paste(args, sprintf("-g %d", gapOpeningPenalty))
                   
   #     -e, --gap-extension-penalty INTEGER gap extension penalty (4)  
   if(is.integer(gapExtensionPenalty))
-    args <- paste(args, sprintf("-e %d", gapExtensionPenalty)
+    args <- paste(args, sprintf("-e %d", gapExtensionPenalty))
 
   
   if(!is.character(fastaFile) || file.exists(fastaFile){
