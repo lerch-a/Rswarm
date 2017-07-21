@@ -110,7 +110,7 @@ swarm <- function(fastaFile, outfilePrefix=sub("\\.fasta", "", fastaFile),
     args <- paste(args, sprintf("-e %d", gapExtensionPenalty))
 
   
-  if(!is.character(fastaFile) || file.exists(fastaFile){
+  if(!is.character(fastaFile) || file.exists(fastaFile)){
     stop("Argument 'fastaFile' has to be a character vector of filenames.")
   }
   args <- paste(args, fastaFile)
