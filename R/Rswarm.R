@@ -8,7 +8,7 @@ swarm <- function(fastaFile, outfilePrefix=sub("\\.fasta", "", fastaFile),
                   boundary=3, differences=1, fastidious=T, noOTUbreaking=F,
                   force=F, internalStructure=T, log=T, outputFile=T, statisticsFile=T, seeds=T, 
                   mothurFormat=F, usearchAbundanceStyle=F, appendAbundance=NULL,
-                  matchReward=5, mismatchPenalty=4, gapOpeningPenalty=12, gapExtensionPenalty=4
+                  matchReward=5, mismatchPenalty=4, gapOpeningPenalty=12, gapExtensionPenalty=4,
                   threads=1, ceiling=NULL, bloomBits=16)
 {
   args <- ""
